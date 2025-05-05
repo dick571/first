@@ -1,0 +1,107 @@
+以下是一个基于 scikit-learn 库实现的 K近邻（KNN）算法 的完整代码示例，涵盖 分类 和 回归 两种任务，并包含详细注释和解释。
+ 一、KNN 分类任务（使用鸢尾花数据集）
+# 1. 导入必要的库
+import numpy as np
+from sklearn.datasets import load_iris
+from sklearn.model_selection import train_test_split
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+
+# 2. 加载数据集
+# 使用经典的鸢尾花（Iris）数据集
+data = load_iris()
+X = data.data   # 特征矩阵（150个样本，4个特征）
+y = data.target # 目标变量（类别标签：0, 1, 2）
+
+# 3. 划分训练集和测试集
+# 按照 70% 训练集和 30% 测试集划分
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.3, random_state=42
+)
+
+# 4. 创建 KNN 分类器
+# 设置 n_neighbors=3，表示使用最近的3个邻居进行预测
+knn_classifier = KNeighborsClassifier(n_neighbors=3)
+
+# 5. 训练模型
+# 使用训练集进行模型训练
+knn_classifier.fit(X_train, y_train)
+
+# 6. 进行预测
+# 使用测试集进行预测
+y_pred = knn_classifier.predict(X_test)
+
+# 7. 评估模型性能
+# 计算准确率
+accuracy = accuracy_score(y_test, y_pred)
+print(f"分类任务准确率: {accuracy:.2f}")
+
+# 打印分类报告（精确率、召回率、F1-score等）
+print("分类报告:")
+print(classification_report(y_test, y_pred))
+
+# 打印混淆矩阵（实际值 vs 预测值）
+print("混淆矩阵:")
+print(confusion_matrix(y_test, y_pred))
+
+
+二、KNN 回归任务（使用糖尿病数据集）
+# 1. 导入必要的库
+from sklearn.datasets import load_diabetes
+from sklearn.model_selection import train_test_split
+from sklearn.neighbors import KNeighborsRegressor
+from sklearn.metrics import mean_squared_error
+
+# 2. 加载数据集
+# 使用糖尿病数据集（目标变量为连续值）
+data = load_diabetes()
+X = data.data   # 特征矩阵（442个样本，10个特征）
+y = data.target # 目标变量（连续值）
+
+# 3. 划分训练集和测试集
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.3, random_state=42
+)
+
+# 4. 创建 KNN 回归器
+# 设置 n_neighbors=5
+knn_regressor = KNeighborsRegressor(n_neighbors=5)
+
+# 5. 训练模型
+knn_regressor.fit(X_train, y_train)
+
+# 6. 进行预测
+y_pred = knn_regressor.predict(X_test)
+
+# 7. 评估模型性能
+# 计算均方误差（MSE）
+mse = mean_squared_error(y_test, y_pred)
+print(f"回归任务均方误差: {mse:.2f}")
+ 三、注意事项与关键概念
+项目	说明
+K值选择	K值较小（如 K=1）容易过拟合，K值较大（如 K=10）可能导致模型欠拟合。建议使用交叉验证选择最优K值。
+距离度量	默认使用欧氏距离（metric='minkowski', p=2），也可选择曼哈顿距离（p=1）等。
+特征标准化	KNN 对特征尺度敏感，建议在训练前对数据进行标准化（如使用 StandardScaler）。
+计算效率	KNN 是惰性学习算法，训练阶段不建模，但预测时计算开销大。对于大数据集，可使用 KDTree 或 BallTree 提高效率。
+数据预处理	确保数据无缺失值，必要时进行特征缩放或降维。
+
+
+如果你希望手动实现 KNN 的核心逻辑（如欧氏距离计算、K个最近邻居选择、预测），可以参考以下简化版代码：
+import numpy as np
+
+class KNN:
+    def __init__(self, k=3):
+        self.k = k
+
+    def fit(self, X_train, y_train):
+        self.X_train = X_train
+        self.y_train = y_train
+
+    def predict(self, X_test):
+        predictions = []
+        for x in X_test:
+            distances = np.sqrt(np.sum((self.X_train - x) ** 2, axis=1))
+            k_indices = np.argsort(distances)[:self.k]
+            k_nearest_labels = self.y_train[k_indices]
+            predictions.append(np.mean(k_nearest_labels))
+        return np.array(predictions)
