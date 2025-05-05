@@ -1,0 +1,38 @@
+pip install scikit-learn numpy pandas matplotlib
+
+from sklearn.datasets import load_iris
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeClassifier, plot_tree
+import matplotlib.pyplot as plt
+import pandas as pd
+
+# 加载数据集
+iris = load_iris()
+X = iris.data    # 特征值
+y = iris.target  # 目标值
+
+# 将数据集分为训练集和测试集
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+
+# 创建决策树分类器实例
+clf = DecisionTreeClassifier(random_state=1234)
+
+# 训练模型
+model = clf.fit(X_train, y_train)
+
+# 在测试集上评估模型
+accuracy = model.score(X_test, y_test)
+print(f"Model accuracy: {accuracy:.2f}")
+
+# 可视化决策树
+plt.figure(figsize=(20,10))
+plot_tree(model, filled=True, feature_names=iris.feature_names, class_names=iris.target_names, rounded=True)
+plt.show()
+
+
+加载数据：使用load_iris()函数从sklearn.datasets加载鸢尾花数据集。
+划分数据集：利用train_test_split方法将数据集划分为训练集和测试集。
+创建并训练模型：初始化一个DecisionTreeClassifier对象，并用训练数据对其进行训练。
+评估模型性能：通过计算模型在测试集上的准确率来评估其性能。
+可视化决策树：使用plot_tree函数绘制决策树图，便于理解模型决策过程。
+这段代码提供了一个基本框架，你可以根据自己的需求调整参数或尝试不同的数据集。例如，你可以改变DecisionTreeClassifier的参数如max_depth, min_samples_split等来控制树的大小和复杂度。
