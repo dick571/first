@@ -1,0 +1,123 @@
+以下是一个基于 scikit-learn 库实现的 K-Means 聚类算法 的完整代码示例，涵盖 数据生成、标准化、肘部法则选择最佳K值、模型训练与可视化 等完整流程，并附有详细注释和解释。
+
+📌 一、K-Means 聚类代码实现（使用 scikit-learn）
+# 1. 导入必要的库
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.datasets import make_blobs
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import silhouette_score
+
+# 2. 生成模拟数据
+# 生成一个二维数据集，包含3个簇
+X, y = make_blobs(n_samples=300, centers=3, cluster_std=0.6, random_state=42)
+
+# 可视化原始数据
+plt.scatter(X[:, 0], X[:, 1], s=50, c='blue', label='Original Data')
+plt.title('Original Data Distribution')
+plt.xlabel('Feature 1')
+plt.ylabel('Feature 2')
+plt.legend()
+plt.show()
+
+# 3. 数据标准化（K-Means对特征尺度敏感）
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+# 4. 使用肘部法则（Elbow Method）选择最佳K值
+wcss = []  # 存储不同K值的误差平方和（SSE）
+for i in range(1, 11):
+    kmeans = KMeans(n_clusters=i, init='k-means++', n_init=10, random_state=42)
+    kmeans.fit(X_scaled)
+    wcss.append(kmeans.inertia_)  # inertia_ 是模型的SSE
+
+# 绘制肘部曲线
+plt.figure(figsize=(8, 5))
+plt.plot(range(1, 11), wcss, 'bo-', linewidth=2, markersize=8)
+plt.title('Elbow Method for Optimal K')
+plt.xlabel('Number of Clusters (K)')
+plt.ylabel('Sum of Squared Errors (SSE)')
+plt.axvline(x=3, color='r', linestyle='--', label='Elbow Point (K=3)')
+plt.legend()
+plt.grid(True)
+plt.show()
+
+# 5. 使用最佳K值（K=3）进行聚类
+kmeans = KMeans(n_clusters=3, init='k-means++', n_init=10, random_state=42)
+kmeans.fit(X_scaled)
+
+# 获取聚类结果
+y_kmeans = kmeans.predict(X_scaled)
+centers = kmeans.cluster_centers_
+
+# 6. 可视化聚类结果
+plt.scatter(X_scaled[:, 0], X_scaled[:, 1], c=y_kmeans, s=50, cmap='viridis', label='Clustered Data')
+plt.scatter(centers[:, 0], centers[:, 1], c='red', s=200, marker='X', label='Centroids')
+plt.title('K-Means Clustering Result (K=3)')
+plt.xlabel('Standardized Feature 1')
+plt.ylabel('Standardized Feature 2')
+plt.legend()
+plt.show()
+
+# 7. 模型评估（轮廓系数）
+score = silhouette_score(X_scaled, y_kmeans)
+print(f"Silhouette Score (K=3): {score:.4f}")
+
+二、代码解析与关键概念
+1. 数据生成与可视化
+使用 make_blobs 生成二维模拟数据，包含3个簇，便于可视化。
+原始数据散点图帮助理解数据分布。
+2. 数据标准化
+K-Means 对特征尺度敏感，使用 StandardScaler 进行标准化处理。
+3. 肘部法则（Elbow Method）
+通过计算不同K值下的 误差平方和（SSE），绘制曲线寻找“拐点”。
+拐点处的K值即为最佳聚类数（本例中为3）。
+4. K-Means 模型训练
+使用 KMeans 类，设置 n_clusters=3，init='k-means++' 避免中心点初始化不当。
+n_init=10 表示运行10次不同初始中心的聚类，取最优结果。
+5. 聚类结果可视化
+不同颜色表示不同簇，红色星号表示聚类中心。
+标准化后的特征使得聚类更准确。
+6. 模型评估
+使用 轮廓系数（Silhouette Score） 评估聚类效果，值越接近1表示聚类效果越好
+
+三、注意事项与进阶建议
+项目	说明
+K值选择	肘部法则和轮廓系数结合使用更可靠，实际应用中需结合业务需求。
+初始化方式	推荐使用 k-means++ 初始化，避免随机初始化导致局部最优。
+特征维度	高维数据需降维（如PCA）后可视化，或使用其他评估指标。
+异常值处理	K-Means 对异常值敏感，建议先进行数据清洗或使用DBSCAN等鲁棒算法。
+扩展应用	可用于客户分群、图像压缩、异常检测等场景。
+
+四、手动实现K-Means（仅用于理解原理）
+def kmeans_manual(X, k, max_iter=100, tol=1e-4):
+    # 1. 初始化中心点（随机选择）
+    centers = X[np.random.choice(X.shape[0], size=k, replace=False)]
+    
+    for _ in range(max_iter):
+        # 2. 分配样本到最近簇
+        distances = np.sqrt(((X - centers[:, np.newaxis])**2).sum(axis=2))  # 计算距离
+        labels = np.argmin(distances, axis=0)  # 找到最近的簇
+        
+        # 3. 更新中心点
+        new_centers = np.array([X[labels == i].mean(axis=0) for i in range(k)])
+        
+        # 4. 判断是否收敛
+        if np.all(np.abs(new_centers - centers) < tol):
+            break
+        
+        centers = new_centers
+    
+    return labels, centers
+
+# 使用手动实现的K-Means
+labels, centers = kmeans_manual(X_scaled, k=3)
+
+# 可视化结果
+plt.scatter(X_scaled[:, 0], X_scaled[:, 1], c=labels, s=50, cmap='viridis')
+plt.scatter(centers[:, 0], centers[:, 1], c='red', s=200, marker='X')
+plt.title('Manual K-Means Clustering')
+plt.xlabel('Standardized Feature 1')
+plt.ylabel('Standardized Feature 2')
+plt.show()
