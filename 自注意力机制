@@ -1,0 +1,133 @@
+以下是一个基于 PyTorch 的 自注意力机制（Self-Attention） 实现代码，包含 单头自注意力 和 多头自注意力 的完整实现，并附有详细注释和解释。
+📌 一、单头自注意力机制（Single-Head Self-Attention）
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+class SelfAttention(nn.Module):
+    def __init__(self, embed_size):
+        super(SelfAttention, self).__init__()
+        self.embed_size = embed_size  # 输入特征的维度
+
+        # 线性变换层：生成 Query, Key, Value
+        self.query = nn.Linear(embed_size, embed_size, bias=False)
+        self.key = nn.Linear(embed_size, embed_size, bias=False)
+        self.value = nn.Linear(embed_size, embed_size, bias=False)
+
+        # 缩放因子（防止点积过大）
+        self.scale = 1.0 / (embed_size ** 0.5)
+
+    def forward(self, x):
+        """
+        输入 x 的形状: (batch_size, seq_len, embed_size)
+        输出的形状: (batch_size, seq_len, embed_size)
+        """
+        # 1. 生成 Query, Key, Value
+        Q = self.query(x)  # (batch_size, seq_len, embed_size)
+        K = self.key(x)    # (batch_size, seq_len, embed_size)
+        V = self.value(x)  # (batch_size, seq_len, embed_size)
+
+        # 2. 计算相似度（点积）
+        # Q: (batch_size, seq_len, embed_size)
+        # K.T: (batch_size, embed_size, seq_len)
+        # attention_scores: (batch_size, seq_len, seq_len)
+        attention_scores = torch.matmul(Q, K.transpose(-1, -2)) * self.scale
+
+        # 3. 应用 Softmax 归一化
+        attention_weights = F.softmax(attention_scores, dim=-1)  # (batch_size, seq_len, seq_len)
+
+        # 4. 加权求和 Value
+        # attention_weights: (batch_size, seq_len, seq_len)
+        # V: (batch_size, seq_len, embed_size)
+        # out: (batch_size, seq_len, embed_size)
+        out = torch.matmul(attention_weights, V)
+
+        return out
+
+
+📌 二、多头自注意力机制（Multi-Head Self-Attention）
+class MultiHeadSelfAttention(nn.Module):
+    def __init__(self, embed_size, num_heads):
+        super(MultiHeadSelfAttention, self).__init__()
+        self.embed_size = embed_size
+        self.num_heads = num_heads
+        self.head_dim = embed_size // num_heads
+
+        assert self.head_dim * num_heads == embed_size, "Embed size must be divisible by num_heads"
+
+        # 线性变换层：生成 Query, Key, Value
+        self.query = nn.Linear(embed_size, embed_size, bias=False)
+        self.key = nn.Linear(embed_size, embed_size, bias=False)
+        self.value = nn.Linear(embed_size, embed_size, bias=False)
+
+        # 输出投影层
+        self.fc_out = nn.Linear(embed_size, embed_size)
+
+        # 缩放因子
+        self.scale = 1.0 / (self.head_dim ** 0.5)
+
+    def forward(self, x):
+        """
+        输入 x 的形状: (batch_size, seq_len, embed_size)
+        输出的形状: (batch_size, seq_len, embed_size)
+        """
+        batch_size, seq_len, _ = x.size()
+
+        # 1. 生成 Query, Key, Value
+        Q = self.query(x)  # (batch_size, seq_len, embed_size)
+        K = self.key(x)    # (batch_size, seq_len, embed_size)
+        V = self.value(x)  # (batch_size, seq_len, embed_size)
+
+        # 2. 分割为多个头（num_heads）
+        # Q: (batch_size, num_heads, seq_len, head_dim)
+        Q = Q.view(batch_size, seq_len, self.num_heads, self.head_dim).transpose(1, 2)
+        K = K.view(batch_size, seq_len, self.num_heads, self.head_dim).transpose(1, 2)
+        V = V.view(batch_size, seq_len, self.num_heads, self.head_dim).transpose(1, 2)
+
+        # 3. 计算相似度（点积）
+        # Q: (batch_size, num_heads, seq_len, head_dim)
+        # K: (batch_size, num_heads, seq_len, head_dim)
+        # attention_scores: (batch_size, num_heads, seq_len, seq_len)
+        attention_scores = torch.matmul(Q, K.transpose(-1, -2)) * self.scale
+
+        # 4. 应用 Softmax 归一化
+        attention_weights = F.softmax(attention_scores, dim=-1)  # (batch_size, num_heads, seq_len, seq_len)
+
+        # 5. 加权求和 Value
+        # attention_weights: (batch_size, num_heads, seq_len, seq_len)
+        # V: (batch_size, num_heads, seq_len, head_dim)
+        # out: (batch_size, num_heads, seq_len, head_dim)
+        out = torch.matmul(attention_weights, V)
+
+        # 6. 合并多头输出
+        # out: (batch_size, seq_len, embed_size)
+        out = out.transpose(1, 2).contiguous().view(batch_size, seq_len, self.embed_size)
+
+        # 7. 输出投影
+        out = self.fc_out(out)
+
+        return out
+
+📌 四、代码解析与关键概念
+1. 自注意力机制的核心思想
+Query, Key, Value：通过线性变换生成，分别表示当前词的查询向量、其他词的键向量和值向量。
+相似度计算：使用点积衡量 Query 和 Key 之间的相关性。
+Softmax 归一化：将相似度转换为注意力权重。
+加权求和：根据注意力权重对 Value 进行加权求和，得到最终输出。
+2. 多头自注意力的优势
+多视角建模：将输入分割成多个头，每个头独立计算注意力，捕捉不同语义关系。
+增强表达能力：多头输出合并后，能更好地捕捉复杂上下文信息。
+并行计算：多头之间可以并行计算，提升效率。
+3. 关键公式
+注意力权重计算：
+
+多头注意力：
+
+
+📌 五、注意事项与扩展
+项目	说明
+缩放因子	防止点积值过大导致梯度消失，通常使用  缩放。
+位置编码	自注意力机制不考虑顺序，需额外加入位置编码（如正弦/余弦函数或可学习嵌入）。
+掩码机制	在解码器中，需引入掩码防止未来信息泄露（masked attention）。
+优化建议	使用 einsum 或 torch.matmul 实现高效矩阵运算。
+扩展应用	自注意力机制广泛用于 NLP（如 Transformer）、图像处理（如 Vision Transformer）等领域。
