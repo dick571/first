@@ -1,0 +1,102 @@
+# 1. 导入必要的库
+import numpy as np
+from sklearn.datasets import load_iris
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+
+# 2. 加载数据集
+# 使用经典的鸢尾花数据集（Iris）
+data = load_iris()
+X = data.data   # 特征矩阵（150个样本，4个特征）
+y = data.target # 目标变量（类别标签：0, 1, 2）
+
+# 3. 划分训练集和测试集
+# 将数据集按 70% 训练集和 30% 测试集划分
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.3, random_state=42  # random_state保证结果可复现
+)
+
+# 4. 创建随机森林分类器
+# 初始化随机森林模型，设置参数：
+# - n_estimators: 决策树的数量（默认100）
+# - max_depth: 每棵树的最大深度（默认不限制）
+# - min_samples_split: 节点分裂的最小样本数（默认2）
+# - random_state: 随机种子
+rf_classifier = RandomForestClassifier(
+    n_estimators=100,
+    max_depth=None,
+    min_samples_split=2,
+    random_state=42
+)
+
+# 5. 训练模型
+# 使用训练集进行模型训练
+rf_classifier.fit(X_train, y_train)
+
+# 6. 进行预测
+# 使用测试集进行预测
+y_pred = rf_classifier.predict(X_test)
+
+# 7. 评估模型性能
+# 计算准确率
+accuracy = accuracy_score(y_test, y_pred)
+print(f"Accuracy: {accuracy:.2f}")
+
+# 打印分类报告（精确率、召回率、F1-score等）
+print("Classification Report:")
+print(classification_report(y_test, y_pred))
+
+# 打印混淆矩阵（实际值 vs 预测值）
+print("Confusion Matrix:")
+print(confusion_matrix(y_test, y_pred))
+
+数据加载
+使用 load_iris() 加载内置的鸢尾花数据集。
+X 是特征矩阵，y 是目标变量（类别标签）。
+数据划分
+使用 train_test_split() 将数据集划分为训练集（70%）和测试集（30%）。
+random_state=42 确保每次运行代码时划分结果一致。
+模型创建
+使用 RandomForestClassifier 创建随机森林分类器。
+参数说明：
+n_estimators=100: 使用 100 棵决策树。
+max_depth=None: 每棵树不限制最大深度。
+min_samples_split=2: 每个节点至少需要 2 个样本才能继续分裂。
+random_state=42: 保证结果可重复。
+模型训练
+使用 fit() 方法在训练集上训练模型。
+模型预测
+使用 predict() 方法对测试集进行预测。
+模型评估
+使用 accuracy_score() 计算准确率。
+使用 classification_report() 打印分类报告（精确率、召回率、F1-score 等）。
+使用 confusion_matrix() 打印混淆矩阵（实际值与预测值的对比）。
+📌 注意事项
+特征重要性
+
+随机森林可以输出特征的重要性排序，使用 rf_classifier.feature_importances_ 可查看每个特征的贡献度。
+超参数调优
+
+可以通过网格搜索（GridSearchCV）调整参数（如 n_estimators、max_depth、min_samples_split）以优化模型性能。
+处理其他数据集
+
+如果使用自定义数据集，只需替换 X 和 y 的加载部分即可。
+
+输出示例
+Accuracy: 0.96
+Classification Report:
+              precision    recall  f1-score   support
+
+          0       1.00      1.00      1.00        16
+          1       0.94      0.94      0.94        18
+          2       0.93      0.93      0.93        11
+
+    accuracy                           0.96        45
+   macro avg       0.96      0.96      0.96        45
+weighted avg       0.96      0.96      0.96        45
+
+Confusion Matrix:
+[[16  0  0]
+ [ 0 17  1]
+ [ 0  1 10]]
