@@ -1,0 +1,179 @@
+以下是基于 PyTorch 实现的 Transformer 编码器（Encoder） 的完整代码示例，包含 多头自注意力机制（Multi-Head Self-Attention）、位置编码（Positional Encoding）、前馈神经网络（Feed-Forward Network） 以及 残差连接（Residual Connection）和层归一化（Layer Normalization） 等核心组件，并附有详细注释和说明。
+📌 一、Transformer 编码器结构概述
+Transformer 编码器由以下组件构成：
+
+输入嵌入（Input Embedding）：将输入序列转换为词向量。
+位置编码（Positional Encoding）：为模型提供序列中词语的位置信息。
+N 个相同的编码器层（Encoder Layer）：
+多头自注意力机制（Multi-Head Self-Attention）
+前馈神经网络（Feed-Forward Network）
+残差连接 + 层归一化
+📌 二、完整代码实现
+
+import torch
+import torch.nn as nn
+import math
+
+# 1. 多头自注意力机制（Multi-Head Self-Attention）
+class MultiHeadAttention(nn.Module):
+    def __init__(self, d_model, n_heads):
+        super(MultiHeadAttention, self).__init__()
+        self.n_heads = n_heads
+        self.d_model = d_model
+        self.head_dim = d_model // n_heads
+
+        assert self.head_dim * n_heads == d_model, "d_model must be divisible by n_heads"
+
+        # 线性变换：生成 Q, K, V
+        self.w_q = nn.Linear(d_model, d_model)
+        self.w_k = nn.Linear(d_model, d_model)
+        self.w_v = nn.Linear(d_model, d_model)
+
+        # 输出线性层
+        self.fc_out = nn.Linear(d_model, d_model)
+
+        # 缩放因子
+        self.scale = 1.0 / (self.head_dim ** 0.5)
+
+    def forward(self, query, key, value, mask=None):
+        batch_size = query.size(0)
+
+        # 1. 线性变换
+        Q = self.w_q(query)  # (batch_size, seq_len, d_model)
+        K = self.w_k(key)    # (batch_size, seq_len, d_model)
+        V = self.w_v(value)  # (batch_size, seq_len, d_model)
+
+        # 2. 分割为多个头
+        Q = Q.view(batch_size, -1, self.n_heads, self.head_dim).transpose(1, 2)
+        K = K.view(batch_size, -1, self.n_heads, self.head_dim).transpose(1, 2)
+        V = V.view(batch_size, -1, self.n_heads, self.head_dim).transpose(1, 2)
+
+        # 3. 计算注意力分数
+        scores = torch.matmul(Q, K.transpose(-1, -2)) * self.scale  # (batch_size, n_heads, seq_len, seq_len)
+
+        if mask is not None:
+            scores = scores.masked_fill(mask == 0, -1e9)
+
+        attention = torch.softmax(scores, dim=-1)
+
+        # 4. 加权求和
+        out = torch.matmul(attention, V)  # (batch_size, n_heads, seq_len, head_dim)
+
+        # 5. 合并多头
+        out = out.transpose(1, 2).contiguous().view(batch_size, -1, self.d_model)
+
+        # 6. 输出线性变换
+        return self.fc_out(out)
+
+# 2. 前馈神经网络（Position-wise Feed-Forward Network）
+class PositionwiseFeedForward(nn.Module):
+    def __init__(self, d_model, d_ff, dropout=0.1):
+        super(PositionwiseFeedForward, self).__init__()
+        self.fc1 = nn.Linear(d_model, d_ff)
+        self.fc2 = nn.Linear(d_ff, d_model)
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, x):
+        return self.fc2(self.dropout(torch.relu(self.fc1(x))))
+
+# 3. 位置编码（Positional Encoding）
+class PositionalEncoding(nn.Module):
+    def __init__(self, d_model, max_len=5000):
+        super(PositionalEncoding, self).__init__()
+        pe = torch.zeros(max_len, d_model)
+        position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-math.log(10000.0) / d_model))
+        pe[:, 0::2] = torch.sin(position * div_term)
+        pe[:, 1::2] = torch.cos(position * div_term)
+        pe = pe.unsqueeze(0)  # (1, max_len, d_model)
+        self.register_buffer('pe', pe)
+
+    def forward(self, x):
+        return x + self.pe[:, :x.size(1)]
+
+# 4. 编码器层（Encoder Layer）
+class EncoderLayer(nn.Module):
+    def __init__(self, d_model, n_heads, d_ff, dropout=0.1):
+        super(EncoderLayer, self).__init__()
+        self.self_attn = MultiHeadAttention(d_model, n_heads)
+        self.ffn = PositionwiseFeedForward(d_model, d_ff, dropout)
+        self.norm1 = nn.LayerNorm(d_model)
+        self.norm2 = nn.LayerNorm(d_model)
+        self.dropout1 = nn.Dropout(dropout)
+        self.dropout2 = nn.Dropout(dropout)
+
+    def forward(self, src, src_mask=None):
+        # 1. 多头自注意力 + 残差连接 + 归一化
+        src2 = self.self_attn(src, src, src, src_mask)
+        src = self.norm1(src + self.dropout1(src2))
+
+        # 2. 前馈网络 + 残差连接 + 归一化
+        src2 = self.ffn(src)
+        src = self.norm2(src + self.dropout2(src2))
+
+        return src
+
+# 5. 编码器（Encoder）
+class Encoder(nn.Module):
+    def __init__(self, src_vocab_size, d_model, n_layers, n_heads, d_ff, dropout=0.1, max_len=5000):
+        super(Encoder, self).__init__()
+        self.embedding = nn.Embedding(src_vocab_size, d_model)
+        self.positional_encoding = PositionalEncoding(d_model, max_len)
+        self.layers = nn.ModuleList([
+            EncoderLayer(d_model, n_heads, d_ff, dropout) for _ in range(n_layers)
+        ])
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, src, src_mask=None):
+        # 1. 输入嵌入 + 位置编码
+        src = self.embedding(src)
+        src = self.positional_encoding(src)
+        src = self.dropout(src)
+
+        # 2. 多层编码器处理
+        for layer in self.layers:
+            src = layer(src, src_mask)
+
+        return src
+
+📌 三、测试代码与输出
+# 示例参数
+src_vocab_size = 10000  # 源语言词汇表大小
+d_model = 512           # 词嵌入维度
+n_layers = 6            # 编码器层数
+n_heads = 8             # 注意力头数
+d_ff = 2048             # 前馈网络中间层维度
+dropout = 0.1           # Dropout比率
+max_len = 100           # 最大序列长度
+
+# 创建编码器
+encoder = Encoder(src_vocab_size, d_model, n_layers, n_heads, d_ff, dropout, max_len)
+
+# 模拟输入数据
+batch_size = 32
+seq_len = 20
+src = torch.randint(0, src_vocab_size, (batch_size, seq_len))  # (batch_size, seq_len)
+
+# 前向传播
+output = encoder(src)
+print("编码器输出形状:", output.shape)  # 应输出 (32, 20, 512)
+
+📌 四、代码解析与关键概念
+组件	功能说明
+MultiHeadAttention	实现多头自注意力机制，捕捉序列内部不同语义关系。
+PositionwiseFeedForward	两层全连接网络，用于引入非线性变换。
+PositionalEncoding	通过正弦/余弦函数生成位置编码，使模型感知序列顺序。
+EncoderLayer	包含多头注意力、前馈网络、残差连接和层归一化。
+Encoder	多个编码器层堆叠，完成整个编码过程。
+
+📌 五、注意事项与扩展建议
+项目	说明
+位置编码方式	可选正弦函数或可学习的 nn.Embedding，根据任务选择。
+掩码机制	在编码器中通常使用填充掩码（padding mask），防止无效位置参与计算。
+多头注意力优化	使用 einsum 或 nn.MultiheadAttention 可提升效率。
+扩展应用	可用于机器翻译、文本摘要、图像分类（结合 Vision Transformer）。
+
+✅ 总结
+Transformer 编码器 是 NLP 任务的核心模块，能够高效捕捉序列内部的长距离依赖关系。
+本实现基于 PyTorch，包含多头自注意力、前馈网络、残差连接、层归一化等关键组件。
+代码结构清晰，便于扩展为完整的 Transformer 模型（结合解码器）或应用于 Vision Transformer。
