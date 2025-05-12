@@ -1,0 +1,47 @@
+#!/bin/sh
+
+# 1，安装 torch 模块，防止依赖多次下载
+# pip3 install torch==2.0.0
+
+# 安装 flash_attn 需要网络下载 github 
+# https://www.autodl.com/docs/network_turbo/
+
+
+# 最后安装 软件 transformers==4.30.2
+# pip3 install vllm==0.4.1
+# pip3 install "xinference[transformers]"
+# llama-cpp-python
+
+sudo apt install -y python3-pip
+pip3 install xinference SentencePiece tiktoken diffusers imageio imageio-ffmpeg 
+
+#  安装ffpeg库。
+# sudo apt update && sudo apt install -y ffmpeg
+
+# 清除全部 fastchat 服务
+ps -ef | grep xinference-local | awk '{print$2}' | xargs kill -9
+sleep 1
+
+rm -f *.log
+
+
+# 兼容 compshare
+if [ -d "/home/ubuntu/.local/bin" ]; then
+    echo "set PATH /home/ubuntu/.local/bin "
+    export PATH=${PATH}:/home/ubuntu/.local/bin
+fi
+
+
+# https://hf-mirror.com/
+export HF_ENDPOINT=https://hf-mirror.com
+export XINFERENCE_MODEL_SRC=modelscope
+export XINFERENCE_HOME=`pwd`/xinf-data
+
+# 首先启动 xinference-local ：
+# CUDA_VISIBLE_DEVICES=0,1,2 
+# --port 6006
+nohup xinference-local --host 0.0.0.0  > xinference-local.log 2>&1 &
+
+sleep 1
+
+tail -f xinference-local.log
