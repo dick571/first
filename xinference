@@ -1,0 +1,101 @@
+以下是针对Xinference和F5-TTS模型下载路径配置问题的解决方案：
+
+Xinference强制使用ModelScope下载的设置方法
+
+1. 环境变量双重配置
+
+需要同时设置模型源和存储路径两个环境变量：
+
+# 强制指定模型源为ModelScope
+export XINFERENCE_MODEL_SRC=modelscope
+# 指定自定义存储路径
+export XINFERENCE_HOME=/your/custom/path
+xinference-local --host 0.0.0.0 --port 9997
+
+
+• 关键点：仅设置存储路径（如XINFERENCE_HOME）无法改变模型源，必须通过XINFERENCE_MODEL_SRC显式声明下载源为ModelScope
+
+• 验证方式：检查启动日志中是否包含Downloading model from modelscope的提示
+
+2. 模型注册配置
+
+若通过代码注册自定义模型，需在model.json中明确指定ModelScope的仓库路径：
+
+{
+  "model_uri": "modelscope://Jerry0/text2vec-base-chinese",
+  "model_format": "pytorch"
+}
+
+
+• 注意：需保持ModelScope的模型ID格式（modelscope://前缀）
+
+3. 缓存目录软链接
+
+若已从ModelScope手动下载模型，可通过软链接映射到Xinference缓存路径：
+
+ln -s /modelscope_download_path ~/.xinference/cache/model-name-format
+
+
+• 命名规则：软链接目录名需符合model-name-format格式（如chatglm3-pytorch-6b）
+
+4. 常见故障排查
+
+现象	可能原因	解决方案
+仍从HuggingFace下载	环境变量未生效	检查启动命令是否在环境变量设置后执行
+ModelScope模型无法识别	模型ID格式错误	使用modelscope://前缀而非HuggingFace格式
+权限问题	存储目录无写入权限	执行chmod -R 777 /your/custom/path
+
+F5-TTS下载配置
+
+1. 镜像站加速下载
+
+通过环境变量强制使用国内镜像：
+
+# 永久生效（写入/etc/environment）
+echo 'HF_ENDPOINT=https://hf-mirror.com' | sudo tee -a /etc/environment
+source /etc/environment
+
+# 下载模型时指定镜像站
+huggingface-cli download --resume-download SWivid/F5-TTS --local-dir /your/custom/path
+
+
+2. 代码层指定路径
+
+在Python脚本中直接指定模型本地路径：
+
+from f5_tts.infer.utils_infer import load_model
+model = load_model(
+    model_type="F5-TTS", 
+    model_path="/your/custom/path/F5TTS_Base/model_1200000.safetensors"
+)
+
+
+3. 启动参数覆盖
+
+通过CLI参数指定下载目录：
+
+f5-tts_infer-gradio --model-path /your/custom/path
+
+
+通用调试建议
+
+1. 日志检查
+
+  ◦ Xinference日志路径：~/.xinference/logs/service.log
+
+  ◦ F5-TTS下载日志：查看huggingface_hub库的下载进度提示
+
+2. 网络代理验证
+若需科学上网，建议为下载工具单独配置代理：
+
+export http_proxy=http://127.0.0.1:7890
+export https_proxy=http://127.0.0.1:7890
+
+
+3. 多版本兼容性
+某些旧版Xinference（<0.14.0）对ModelScope支持不完善，建议升级：
+
+pip install -U xinference
+
+
+通过以上配置，可确保Xinference和F5-TTS优先从ModelScope或指定路径加载模型。若问题仍未解决，建议提供具体错误日志以便进一步分析。
