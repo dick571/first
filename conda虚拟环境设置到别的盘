@@ -19,6 +19,14 @@ python -c "print('Hello, world!')"
 如果你已经有一个标准的 environment.yml 文件（包含 name, dependencies 等字段），你应该使用：
 conda env create --prefix D:/minicondaenv/difypluginnew --file environment.yml
 
+在Windows上设置环境变量可以通过图形界面进行永久设置，也可以通过命令行进行临时或永久设置。下面详细介绍如何通过系统设置添加一个永久生效的系统环境变量CONDA_ENVS_PATH。
+在用户变量或系统变量部分添加新变量：
+如果你希望这个变量只对你当前的用户有效，请在“用户变量”部分操作。
+如果你希望这个变量对所有用户都有效（即系统级），请在“系统变量”部分操作。
+点击“新建”按钮，将会弹出一个对话框让你输入变量名和变量值。
+变量名：输入 CONDA_ENVS_PATH
+变量值：输入你想要设置的新路径，例如 C:\your\new\path
+
 对于系统级别的变量（影响所有用户），你可以加上 /M 参数：
 setx /M CONDA_ENVS_PATH "C:\your\new\path"
 
