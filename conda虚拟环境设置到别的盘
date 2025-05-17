@@ -1,0 +1,26 @@
+如何迁移已有的虚拟环境到新位置？
+conda activate your_env_name
+conda env export --no-builds > environment.yml
+步骤 2: 创建新位置的环境
+conda create --prefix /new/path/to/envs/your_new_env_name --file environment.yml
+
+步骤 3: 验证新环境
+conda activate /new/path/to/envs/your_new_env_name
+# 或者如果使用的是环境名而非路径：
+# conda activate your_new_env_name
+
+# 检查已安装的包
+conda list
+
+# 运行一些简单的测试来确认一切正常
+python -c "print('Hello, world!')"
+
+ 方法一：使用 conda env create 来创建完整环境（推荐）
+如果你已经有一个标准的 environment.yml 文件（包含 name, dependencies 等字段），你应该使用：
+conda env create --prefix D:/minicondaenv/difypluginnew --file environment.yml
+
+对于系统级别的变量（影响所有用户），你可以加上 /M 参数：
+setx /M CONDA_ENVS_PATH "C:\your\new\path"
+
+  删除虚拟环境的命令
+  conda env remove --name your_env_name
