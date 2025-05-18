@@ -2,7 +2,7 @@
 conda activate your_env_name
 conda env export --no-builds > environment.yml
 步骤 2: 创建新位置的环境
-conda create --prefix /new/path/to/envs/your_new_env_name --file environment.yml
+conda env create --prefix /new/path/to/envs/your_new_env_name --file environment.yml
 
 步骤 3: 验证新环境
 conda activate /new/path/to/envs/your_new_env_name
