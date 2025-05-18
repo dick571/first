@@ -27,7 +27,8 @@ conda env create --prefix D:/minicondaenv/difypluginnew --file environment.yml
 变量名：输入 CONDA_ENVS_PATH
 变量值：输入你想要设置的新路径，例如 C:\your\new\path
 
-对于系统级别的变量（影响所有用户），你可以加上 /M 参数：
+在powershell中以管理员权限运行下面的代码
+对于系统级别的变量（影响所有用户），你可以加上 /M 参数：这个是命令设置环境变量
 setx /M CONDA_ENVS_PATH "C:\your\new\path"
 
   删除虚拟环境的命令
