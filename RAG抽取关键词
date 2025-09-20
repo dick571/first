@@ -21,6 +21,7 @@
 对大规模文档块，使用分布式计算（如 Spark）或批处理加速。
 
 关键结论
+
 通用最优方案：混合方法（BM25 + Dense Vector + Reranker）。
 资源敏感场景：TF-IDF 或 TextRank。
 语义密集场景：BERT-based 方法或混合方法。
